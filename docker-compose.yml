@@ -1,0 +1,13 @@
+services:
+  hydra-api:
+    build:
+      context: .  # El punto significa "aquí mismo"
+    container_name: hydra-api-container
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - SUPABASE_S3_SECRET_KEY=${SUPABASE_S3_SECRET_KEY}
+    restart: unless-stopped
