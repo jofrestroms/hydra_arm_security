@@ -35,7 +35,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-            "http://localhost:8100" // 👈 Ionic
+            "*" // 👈 Ionic
         ));
 
         config.setAllowedMethods(List.of(
