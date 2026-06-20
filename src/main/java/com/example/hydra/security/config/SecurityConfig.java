@@ -34,10 +34,7 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
-            "*" // 👈 Ionic
-        ));
-
+        config.setAllowedOriginPatterns(null);
         config.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "OPTIONS"
         ));
