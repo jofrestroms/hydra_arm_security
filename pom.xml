@@ -105,13 +105,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- ── Multipart ── -->
-        <dependency>
-            <groupId>commons-fileupload</groupId>
-            <artifactId>commons-fileupload</artifactId>
-            <version>1.5</version>
-        </dependency>
-
         <!-- ── Tests ── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
