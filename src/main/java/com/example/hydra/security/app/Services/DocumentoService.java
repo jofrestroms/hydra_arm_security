@@ -118,7 +118,7 @@ public class DocumentoService {
     }
 
     private String construirUrlPublica(String path) {
-        return endpoint.replace("/storage/v1/s3", "")
-                + "/storage/v1/object/public/" + bucket + "/" + path;
+        return endpoint.substring(0, endpoint.indexOf(".storage.supabase.co"))
+                + ".supabase.co/storage/v1/object/public/" + bucket + "/" + path;
     }
 }
