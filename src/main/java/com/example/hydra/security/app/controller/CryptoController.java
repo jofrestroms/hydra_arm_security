@@ -1,6 +1,7 @@
 package com.example.hydra.security.app.controller;
 
 import com.example.hydra.security.app.Services.EncryptionService;
+import com.example.hydra.security.app.Utils.HashUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,5 +29,17 @@ public class CryptoController {
     @GetMapping("/decrypt")
     public String decrypt(@RequestParam String codigo) {
         return encryptionService.Desencriptar(codigo);
+    }
+
+    /**
+     * SHA-256 determinista de un RUN (minúsculas, sin puntos ni espacios).
+     * A diferencia de /encrypt, este hasheo ES determinista: el mismo RUN
+     * siempre devuelve el mismo hash. Se usa para que los clientes puedan
+     * comparar su identidad contra los mensajes que llegan por SSE, ya que
+     * el ciphertext nunca sale del servidor.
+     */
+    @GetMapping("/hash")
+    public String hash(@RequestParam String run) {
+        return HashUtils.HASHEO(run);
     }
 }
