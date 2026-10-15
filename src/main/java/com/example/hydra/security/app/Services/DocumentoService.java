@@ -1,6 +1,7 @@
 package com.example.hydra.security.app.Services;
 
 import com.example.hydra.security.app.Utils.HashUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,9 @@ public class DocumentoService {
     @Value("${supabase.s3.access-key}") private String accessKey;
     @Value("${supabase.s3.secret-key}") private String secretKey;
     @Value("${supabase.bucket}") private String bucket;
+
+    @Autowired
+    private StoragePresigner storagePresigner;
 
     // --- Clase DTO interna para la respuesta ---
     public static class DocumentoInfo {
@@ -76,7 +80,7 @@ public class DocumentoService {
                     
                     return new DocumentoInfo(
                         nombreArchivo,
-                        construirUrlPublica(fullPath),
+                        storagePresigner.presignGet(bucket, fullPath, urlDescarga(nombreArchivo)),
                         obj.lastModified() // <--- Este es el "Added on"
                     );
                 })
@@ -101,7 +105,7 @@ public class DocumentoService {
                         .build(),
                 RequestBody.fromBytes(archivo.getBytes())
         );
-        return construirUrlPublica(path);
+        return storagePresigner.presignGet(bucket, path, urlDescarga(archivo.getOriginalFilename()));
     }
 
     public void eliminarDocumento(String rutOriginal, String nombreArchivo) {
@@ -117,8 +121,10 @@ public class DocumentoService {
         } catch (NoSuchKeyException e) { return false; }
     }
 
-    private String construirUrlPublica(String path) {
-        return endpoint.substring(0, endpoint.indexOf(".storage.supabase.co"))
-                + ".supabase.co/storage/v1/object/public/" + bucket + "/" + path;
+    /** Content-Disposition para forzar la descarga con el nombre original. */
+    private String urlDescarga(String nombreArchivo) {
+        String seguro = (nombreArchivo == null ? "documento" : nombreArchivo)
+                .replace("\"", "").replaceAll("[\\r\\n]", "");
+        return "attachment; filename=\"" + seguro + "\"";
     }
 }

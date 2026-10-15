@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
 import java.util.Map;
 
 @RestController
@@ -45,6 +46,21 @@ public class AdjuntoMensajeController {
             return ResponseEntity.ok(Map.of("mensaje", "adjunto eliminado"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * URL estable de contenido de un adjunto. Redirige (302) a una URL firmada
+     * fresca del bucket privado. Asi los enlaces guardados en los mensajes no
+     * expiran.
+     */
+    @GetMapping("/contenido")
+    public ResponseEntity<Void> contenido(@RequestParam("key") String key) {
+        try {
+            String url = adjuntoMensajeService.presignGet(key);
+            return ResponseEntity.status(302).location(URI.create(url)).build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 }

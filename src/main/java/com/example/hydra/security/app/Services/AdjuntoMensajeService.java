@@ -1,6 +1,7 @@
 package com.example.hydra.security.app.Services;
 
 import com.example.hydra.security.app.Utils.HashUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +14,9 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Adjuntos de mensajeria en Supabase Storage (bucket "Mensajes").
@@ -30,6 +34,9 @@ public class AdjuntoMensajeService {
     @Value("${supabase.s3.access-key}") private String accessKey;
     @Value("${supabase.s3.secret-key}") private String secretKey;
     @Value("${supabase.bucket.mensajes}") private String bucket;
+
+    @Autowired
+    private StoragePresigner storagePresigner;
 
     public static class AdjuntoInfo {
         private final String url;
@@ -80,7 +87,31 @@ public class AdjuntoMensajeService {
         } catch (Exception e) {
             throw new RuntimeException("Error subiendo adjunto: " + e.getMessage());
         }
-        return new AdjuntoInfo(construirUrlPublica(key), nombre);
+        return new AdjuntoInfo(urlEstable(key), nombre);
+    }
+
+    /**
+     * URL estable (no caduca) que apunta al endpoint /contenido de este servicio.
+     * El endpoint redirige a una URL firmada fresca cada vez que se accede, de
+     * modo que el bucket puede seguir siendo privado y los mensajes guardados
+     * no se rompen por expiracion.
+     */
+    private String urlEstable(String key) {
+        return storagePresigner.publicBaseUrl()
+                + "/api/mensajes/adjuntos/contenido?key="
+                + URLEncoder.encode(key, StandardCharsets.UTF_8);
+    }
+
+    /** Genera una URL firmada de descarga para una key validada. */
+    public String presignGet(String key) {
+        if (!keyValida(key)) {
+            throw new RuntimeException("Key de adjunto inválida.");
+        }
+        return storagePresigner.presignGet(bucket, key, null);
+    }
+
+    private boolean keyValida(String key) {
+        return key != null && key.startsWith("conversaciones/") && !key.contains("..");
     }
 
     public void eliminarAdjunto(String url) {
@@ -123,15 +154,26 @@ public class AdjuntoMensajeService {
                 || tipo.equals("application/octet-stream");
     }
 
-    private String construirUrlPublica(String key) {
-        return endpoint.substring(0, endpoint.indexOf(".storage.supabase.co"))
-                + ".supabase.co/storage/v1/object/public/" + bucket + "/" + key;
-    }
-
     private String extraerKey(String url) {
         if (url == null) {
             return null;
         }
+        // Formato nuevo: .../contenido?key=<url-encoded>
+        int q = url.indexOf("key=");
+        if (q >= 0) {
+            String valor = url.substring(q + 4);
+            int amp = valor.indexOf('&');
+            if (amp >= 0) {
+                valor = valor.substring(0, amp);
+            }
+            try {
+                String key = URLDecoder.decode(valor, StandardCharsets.UTF_8);
+                return key.isBlank() ? null : key;
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        // Formato antiguo (URL publica): .../<bucket>/<key>
         String prefijo = bucket + "/";
         int idx = url.indexOf(prefijo);
         if (idx < 0) {

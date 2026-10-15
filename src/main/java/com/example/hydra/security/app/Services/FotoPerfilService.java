@@ -1,6 +1,7 @@
 package com.example.hydra.security.app.Services;
 
 import com.example.hydra.security.app.Utils.HashUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,6 +47,9 @@ public class FotoPerfilService {
     @Value("${supabase.bucket}")
     private String bucket;
 
+    @Autowired
+    private StoragePresigner storagePresigner;
+
     private S3Client getS3Client() {
         return S3Client.builder()
                 .endpointOverride(URI.create(endpoint))
@@ -75,7 +79,7 @@ public class FotoPerfilService {
                 RequestBody.fromBytes(archivo.getBytes()));
 
         System.out.println("✅ Foto de perfil subida: " + path);
-        return construirUrlPublica(path);
+        return storagePresigner.presignGet(bucket, path, null);
     }
 
     // ── Subir o reemplazar desde Base64 ──
@@ -99,7 +103,7 @@ public class FotoPerfilService {
                 RequestBody.fromBytes(data));
 
         System.out.println("✅ Foto de perfil (base64) subida: " + path);
-        return construirUrlPublica(path);
+        return storagePresigner.presignGet(bucket, path, null);
     }
 
     // ── Eliminar foto de perfil ──
@@ -135,11 +139,6 @@ public class FotoPerfilService {
         }
     }
 
-    private String construirUrlPublica(String path) {
-        return endpoint.substring(0, endpoint.indexOf(".storage.supabase.co"))
-                + ".supabase.co/storage/v1/object/public/" + bucket + "/" + path;
-    }
-
     private String detectarContentType(String contenidoB64) {
         if (contenidoB64.startsWith("data:image/png"))
             return "image/png";
@@ -173,7 +172,7 @@ public class FotoPerfilService {
         return response.contents().stream()
                 .filter(obj -> !obj.key().equals(carpeta))
                 .findFirst()
-                .map(obj -> construirUrlPublica(obj.key()))
+                .map(obj -> storagePresigner.presignGet(bucket, obj.key(), null))
                 .orElse(null);
     }
     public boolean tieneFotoPerfil(String rutOriginal) {
